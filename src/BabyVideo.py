@@ -97,7 +97,7 @@ class BabyVideo:
             for frame in self.frames:
                 f.write("file '" + frame + "'\n")  # we write a file with all our frames in order for ffmpeg to read from
 
-        command = "ffmpeg -f concat -safe 0 -r " + str(BabyVideo.FPS) + " -i " + temp_dir_path + "/mylist.txt -i " + audio_path + " -y " + output_path # Jesus Wept
+        command = "ffmpeg -f concat -safe 0 -r " + str(BabyVideo.FPS) + " -i " + temp_dir_path + "/mylist.txt -i " + audio_path + " -y -pix_fmt yuv420p " + output_path # Jesus Wept
 
         try:
             subprocess.call(command, shell=True) # call the above ffmpeg command
