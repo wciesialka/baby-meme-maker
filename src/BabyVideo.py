@@ -3,6 +3,7 @@ import ffmpeg
 import tempfile
 from pathlib import Path
 import subprocess
+import os
 
 class BabyVideo:
 
@@ -30,7 +31,7 @@ class BabyVideo:
     def add_audio(self,segment):
         self.audio = self.audio + segment
 
-    def export(self,filename):
+    def export(self,output_path):
         temp_dir = tempfile.TemporaryDirectory()
         temp_dir_path = temp_dir.name
         audio_path = temp_dir_path + "/audio.mp3"
@@ -41,6 +42,11 @@ class BabyVideo:
             for frame in self.frames:
                 f.write("file '" + frame + "'\n")
 
-        command = "ffmpeg -f concat -safe 0 -r " + str(BabyVideo.FPS) + " -i " + temp_dir_path + "/mylist.txt -i " + audio_path + " out.mp4"
+        command = "ffmpeg -f concat -safe 0 -r " + str(BabyVideo.FPS) + " -i " + temp_dir_path + "/mylist.txt -i " + audio_path + " -y " + output_path
 
-        subprocess.call(command, shell=True)
+        try:
+            subprocess.call(command, shell=True)
+        except:
+            return False
+        else:
+            return os.path.exists(output_path)
