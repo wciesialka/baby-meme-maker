@@ -14,7 +14,7 @@ class BabyVideo:
     EAT_START = 109 #Frame 109
     VIDEO_END = 132 #Frame 132
 
-    LOUDEST = 99.5 # 99.5 dB - the loudest sound that a computer can typically encode.
+    LOUDEST = 104
 
     def __init__(self):
         self.resources = str(Path(__file__).parent.parent / "resources")
@@ -26,7 +26,7 @@ class BabyVideo:
         return self.resources + "/frames/frame_{:06d}.png".format(id) # frames are in name format frame_######.png where # is a 6-digit number with leading zeroes
 
     def add_frame(self,id):
-        self.frames.append(format_id(id))
+        self.frames.append(self.format_id(id))
         self.duration = len(self.frames)*BabyVideo.MSPF
 
     def add_audio(self,segment):
@@ -56,19 +56,24 @@ class BabyVideo:
     def add_file(self,filename,min_threshold=0):
         new_audio = AudioSegment.from_file(filename)
         duration_millis = new_audio.duration_seconds * 1000
-        for i in range(0,duration_millis,BabyVideo.MSPF):
-            start = i # the start
-            end = min(i + BabyVideo.MSPF - .0001, duration_millis) #the end
-            clip = new_audio[start,end] # the clip
-            vol = self.amptodb(clip.max) # convert the highest amplitude to dB 
-            thresh = vol * min_threshold
 
-            treshed_vol = max(0,vol-thresh) # we subtract treshold from volume to make the video look better
+        count = math.ceil(duration_millis / BabyVideo.MSPF)
 
-            mapped = self.translate(treshed_vol,0,BabyVideo.LOUDEST,BabyVideo.EAT_START,BabyVideo.VIDEO_END) # from 0-99.5 -> 109-132
-            frame_id = round(mapped)
+        for j in range(0,count):
+            i = j * BabyVideo.MSPF
+            if i < duration_millis:
+                start = i # the start
+                end = min(i + BabyVideo.MSPF - .0001, duration_millis) #the end
+                clip = new_audio[start:end] # the clip
+                vol = self.amptodb(clip.max) # convert the highest amplitude to dB 
+                thresh = vol * min_threshold
 
-            self.add_frame(frame_id)
+                treshed_vol = max(0,vol-thresh) # we subtract treshold from volume to make the video look better
+
+                mapped = self.translate(treshed_vol,0,BabyVideo.LOUDEST-thresh,BabyVideo.EAT_START,BabyVideo.VIDEO_END) # from 0-99.5 -> 109-132
+                frame_id = min(max(round(mapped),BabyVideo.EAT_START),BabyVideo.VIDEO_END-1)
+
+                self.add_frame(frame_id)
 
         self.add_audio(new_audio)
 
@@ -77,6 +82,7 @@ class BabyVideo:
         count = math.ceil(excess / BabyVideo.MSPF)
         for i in range(0,count):
             self.frames.append(self.resources + "/empty.png")
+        self.add_audio(AudioSegment.silent(BabyVideo.MSPF*count))
         self.duration = len(self.frames)*BabyVideo.MSPF
 
     def export(self,output_path):
@@ -94,7 +100,7 @@ class BabyVideo:
         command = "ffmpeg -f concat -safe 0 -r " + str(BabyVideo.FPS) + " -i " + temp_dir_path + "/mylist.txt -i " + audio_path + " -y " + output_path # Jesus Wept
 
         try:
-            subprocess.call(command, shell=True)
+            subprocess.call(command, shell=True) # call the above ffmpeg command
         except:
             return False
         else:
