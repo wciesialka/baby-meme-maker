@@ -1,12 +1,11 @@
 from pydub import AudioSegment
-import ffmpeg
 import tempfile
 from pathlib import Path
-import subprocess
+import src.FrameVideo as FrameVideo
 import os
 import math
 
-class BabyVideo:
+class BabyVideo(FrameVideo):
 
     FPS = 29.970    #NTSC as defined by Sony Vegas
     MSPF = 1000/FPS # Milliseconds per Frame
@@ -17,6 +16,7 @@ class BabyVideo:
     LOUDEST = 104
 
     def __init__(self):
+        super().__init__(self,BabyVideo.FPS)
         self.resources = str(Path(__file__).parent.parent / "resources")
         self.frames = list(map(lambda id: self.resources + "/frames/frame_{:06d}.png".format(id), range(BabyVideo.VIDEO_START,BabyVideo.EAT_START)))
         self.audio = AudioSegment.from_file(self.resources + "/snd.mp3")
@@ -26,11 +26,7 @@ class BabyVideo:
         return self.resources + "/frames/frame_{:06d}.png".format(id) # frames are in name format frame_######.png where # is a 6-digit number with leading zeroes
 
     def add_frame(self,id):
-        self.frames.append(self.format_id(id))
-        self.duration = len(self.frames)*BabyVideo.MSPF
-
-    def add_audio(self,segment):
-        self.audio = self.audio + segment
+        super().add_frame(format_id(id))
 
     def translate(self, value, from_min, from_max, to_min, to_max):
         from_range = from_max - from_min
@@ -57,7 +53,7 @@ class BabyVideo:
         new_audio = AudioSegment.from_file(filename)
         duration_millis = new_audio.duration_seconds * 1000
 
-        count = math.ceil(duration_millis / BabyVideo.MSPF)
+        count = math.ceil(duration_millis / self.mspf)
 
         for j in range(0,count):
             i = j * BabyVideo.MSPF
@@ -71,37 +67,11 @@ class BabyVideo:
                 treshed_vol = max(0,vol-thresh) # we subtract treshold from volume to make the video look better
 
                 mapped = self.translate(treshed_vol,0,BabyVideo.LOUDEST-thresh,BabyVideo.EAT_START,BabyVideo.VIDEO_END) # from 0-99.5 -> 109-132
-                frame_id = min(max(round(mapped),BabyVideo.EAT_START),BabyVideo.VIDEO_END-1)
+                frame_id = min(max(round(mapped),BabyVideo.EAT_START),BabyVideo.VIDEO_END)
 
                 self.add_frame(frame_id)
 
         self.add_audio(new_audio)
 
     def prevent_cutoff(self):
-        excess = self.duration % 1000
-        count = math.ceil(excess / BabyVideo.MSPF)
-        for i in range(0,count):
-            self.frames.append(self.resources + "/empty.png")
-        self.add_audio(AudioSegment.silent(BabyVideo.MSPF*count))
-        self.duration = len(self.frames)*BabyVideo.MSPF
-
-    def export(self,output_path):
-        self.prevent_cutoff()
-
-        temp_dir = tempfile.TemporaryDirectory()
-        temp_dir_path = temp_dir.name
-        audio_path = temp_dir_path + "/audio.mp3"
-        self.audio.export(audio_path,format="mp3") # we need to export our combined audio to use with ffmpeg
-
-        with open(temp_dir_path + "/mylist.txt","w") as f:
-            for frame in self.frames:
-                f.write("file '" + frame + "'\n")  # we write a file with all our frames in order for ffmpeg to read from
-
-        command = "ffmpeg -f concat -safe 0 -r " + str(BabyVideo.FPS) + " -i " + temp_dir_path + "/mylist.txt -i " + audio_path + " -y -pix_fmt yuv420p " + output_path # Jesus Wept
-
-        try:
-            subprocess.call(command, shell=True) # call the above ffmpeg command
-        except:
-            return False
-        else:
-            return os.path.exists(output_path)
+        super().prevent_cutoff(self.format_id(BabyVideo.EAT_START))
