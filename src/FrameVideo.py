@@ -21,7 +21,7 @@ class FrameVideo:
     def add_audio(self,segment):
         self.audio = self.audio + segment
 
-    def prevent_cutoff(self,backup=self.frames[0]):
+    def prevent_cutoff(self,backup=0):
         excess = self.duration % 1000
         count = math.ceil(excess / self.mspf)
         for i in range(0,count):

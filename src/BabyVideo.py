@@ -5,7 +5,7 @@ import src.FrameVideo as FrameVideo
 import os
 import math
 
-class BabyVideo(FrameVideo):
+class BabyVideo(FrameVideo.FrameVideo):
 
     FPS = 29.970    #NTSC as defined by Sony Vegas
     MSPF = 1000/FPS # Milliseconds per Frame
@@ -16,17 +16,17 @@ class BabyVideo(FrameVideo):
     LOUDEST = 104
 
     def __init__(self):
-        super().__init__(self,BabyVideo.FPS)
+        super().__init__(BabyVideo.FPS)
         self.resources = str(Path(__file__).parent.parent / "resources")
         self.frames = list(map(lambda id: self.resources + "/frames/frame_{:06d}.png".format(id), range(BabyVideo.VIDEO_START,BabyVideo.EAT_START)))
         self.audio = AudioSegment.from_file(self.resources + "/snd.mp3")
         self.duration = len(self.frames)*BabyVideo.MSPF
 
     def format_id(self,id):
-        return self.resources + "/frames/frame_{:06d}.png".format(id) # frames are in name format frame_######.png where # is a 6-digit number with leading zeroes
+        return self.resources + "/frames/frame_{:06d}.png".format(int(id)) # frames are in name format frame_######.png where # is a 6-digit number with leading zeroes
 
     def add_frame(self,id):
-        super().add_frame(format_id(id))
+        super().add_frame(self.format_id(id))
 
     def translate(self, value, from_min, from_max, to_min, to_max):
         from_range = from_max - from_min
@@ -74,4 +74,4 @@ class BabyVideo(FrameVideo):
         self.add_audio(new_audio)
 
     def prevent_cutoff(self):
-        super().prevent_cutoff(self.format_id(BabyVideo.EAT_START))
+        super().prevent_cutoff(BabyVideo.EAT_START)
